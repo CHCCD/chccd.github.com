@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="zh-tw">
+<head>
+	<meta charset="UTF-8">
+	<meta name="author" content="Bonnie">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Pay-per-crawl / HTTP 402：Cloudflare 帶起的爬蟲付費機制</title>
+	<link rel="shortcut icon" type="image/svg+xml" href="images/favicon.svg" />
+	<meta name="description" content="Pay-per-crawl 是 Cloudflare 在2026 年 7 月，讓它進一步演化成「Pay Per Use」，收費點從「抓取」移到「內容真的被用進 AI 答案裡」。對任何靠內容吃飯的網站來說，這已經不是遠方的產業新聞，而是後台一個預設值的問題。">
+	<meta name="keywords" content="Pay-per-crawl,AI,Cloudflare,Pay Per Use,網站架設">
+	<meta property="og:description" content="Pay-per-crawl 是 Cloudflare 在2026 年 7 月，讓它進一步演化成「Pay Per Use」，收費點從「抓取」移到「內容真的被用進 AI 答案裡」。對任何靠內容吃飯的網站來說，這已經不是遠方的產業新聞，而是後台一個預設值的問題。" />
+	<meta property="og:title" content="Pay-per-crawl / HTTP 402：Cloudflare 帶起的爬蟲付費機制" />
+	<meta property="og:image" content="images/n04.jpg" />
+	<!-- css -->
+	
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+	<link rel="stylesheet" type="text/css" href="css/reset.css" />
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.2/font/bootstrap-icons.css" integrity="sha384-b6lVK+yci+bfDmaY1u0zE8YYJt0TZxLEAFyYSLHId4xoVvsrQu3INevFKo+Xir8e" crossorigin="anonymous">
+
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.carousel.min.css" integrity="sha512-tS3S5qG0BlhnQROyJXvNjeEM4UpMXHrQfTGmbQ1gKmelCxlSEBUaxhRBj/EFTzpbP4RVSrpEikbmdJobCvhE3g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.theme.default.min.css" integrity="sha512-sMXtMNL1zRzolHYKEujM2AqCLUR9F2C4/05cdbxjjLSRvMQIciEPCQZo++nk7go3BtSuK9kfa/s+a4f4i5pLkw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+	<link rel="stylesheet" type="text/css" href="css/mainvision.css" />
+	<link rel="stylesheet" type="text/css" href="css/news_block_new.css" />
+	<link rel="stylesheet" type="text/css" href="css/rd-navbar.css" />
+	<link rel="stylesheet" type="text/css" href="css/rd-navbar-fix.css" />
+	<link rel="stylesheet" type="text/css" href="css/btp.css" />
+	<link rel="stylesheet" type="text/css" href="css/style.css" />
+
+	<!-- js -->
+	<script src="https://code.jquery.com/jquery-3.7.0.js" integrity="sha256-JlqSTELeR4TLqP0OG9dxM7yDPqX1ox/HfgiSLBj8+kM=" crossorigin="anonymous"></script>
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+	<script src="js/jquery.rd-navbar.js" type="text/javascript"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/owl.carousel.min.js" integrity="sha512-bPs7Ae6pVvhOSiIcyUClR7/q2OAsRiovw4vAkX+zJbw3ShAeeqezq50RIIcIURq7Oa20rW2n2q+fyXBNcU9lrw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+	<script>
+	$(document).ready(function(){
+
+		var o = $('.rd-navbar');
+		o.RDNavbar({
+			autoHeight:false,
+			stickUpClone:false,
+			stickUpOffset:170,
+			responsive: {
+			0: {
+				layout: 'rd-navbar-fixed',
+				focusOnHover: false
+			},
+			1200: {
+				layout: 'rd-navbar-static',
+				focusOnHover: true
+			}
+			}
+		});
+
+	});
+	</script>
+
+</head>
+
+<body>
+
+<button onclick="topFunction()" id="totop" title="Go to top"><i class="bi bi-chevron-up"></i></button>
+<script>
+let mybutton = document.getElementById("totop");
+
+window.onscroll = function() {scrollFunction()};
+
+function scrollFunction() {
+	if (document.body.scrollTop > 20 || document.documentElement.scrollTop > 20) {
+		mybutton.style.display = "block";
+	} else {
+		mybutton.style.display = "none";
+	}
+}
+
+function topFunction() {
+	document.body.scrollTop = 0; // For Safari
+	document.documentElement.scrollTop = 0; // For Chrome, Firefox, IE and Opera
+}
+</script>
+
+<!-- header Start -->
+<header>
+    <!-- RD Navbar -->
+    <div class="rd-navbar-wrap">
+        <nav class="rd-navbar" data-rd-navbar-lg="rd-navbar-static">
+            <div class="navbar-block text-end">
+			<div class="rd-navbar-inner">
+                <!-- RD Navbar Panel -->
+                <div class="rd-navbar-panel">
+                    <div class="rd-navbar-panel-canvas"></div>
+
+                    <!-- RD Navbar Toggle -->
+                    <button class="rd-navbar-toggle" data-rd-navbar-toggle=".rd-navbar-nav-wrap"><span></span></button>
+                    <!-- END RD Navbar Toggle -->
+
+                </div>
+                <!-- END RD Navbar Panel -->
+            </div>
+            </div>
+			
+            <div class="rd-navbar-outer">
+                <div class="rd-navbar-inner">
+
+
+                    <div class="rd-navbar-subpanel">
+
+                    <!-- RD Navbar Brand --><!-- logo -->
+                    <div class="rd-navbar-brand">
+                        <a href="index.html" target="_top" title="文網-網頁設計公司">
+							<img src="images/logo_w.svg" alt="文網-網頁設計公司" class="brand-logo logo_w" />
+							<img src="images/logo.svg" alt="文網-網頁設計公司" class="brand-logo logo_c" />
+                        </a>
+                    </div>
+                    <!-- END RD Navbar Brand --><!-- logo -->
+
+                        <div class="rd-navbar-nav-wrap">
+                            <!-- RD Navbar Nav -->
+                            <ul class="rd-navbar-nav">
+                                <li><a href="about.html" target="_top" title="關於我們">關於我們</a></li>
+                                <li><a href="news.html" target="_top" title="最新訊息">最新訊息</a></li>
+                                <li>
+                                    <a href="article.html" target="_top" title="專題文章">專題文章</a>
+
+                                    <!-- RD Navbar Dropdown -->
+                                    <ul class="rd-navbar-dropdown">
+                                        <li>
+                                            <a href="web_design_price.html" target="_top" title="網頁設計報價解說">網頁設計報價解說</a>
+                                        </li>
+                                        <li>
+                                            <a href="web_design_preparation.html" target="_top" title="網頁設計前置準備">網頁設計前置準備</a>
+                                            <ul class="rd-navbar-dropdown">
+                                                <li>
+                                                    <a href="visit_web_design_tutorial_sites.html" target="_top" title="逛逛網頁設計教學網站">逛逛網頁設計教學網站</a>
+                                                </li>
+                                                <li>
+                                                    <a href="web_design_museum.html" target="_top" title="網頁設計大觀園">網頁設計大觀園</a>
+                                                </li>
+                                            </ul>
+                                        </li>
+                                    </ul>
+                                    <!-- END RD Navbar Dropdown -->
+
+                                </li>
+                                <li><a href="service.html" target="_top" title="服務介紹">服務介紹</a></li>
+                                <li><a href="contact_us.html" target="_top" title="聯絡我們">聯絡我們</a></li>
+                            </ul>
+                            <!-- END RD Navbar Nav -->
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </div>
+    <!-- END RD Navbar -->
+</header>
+<!-- header End -->
+
+
+		
+<div id="maincontent">
+
+										
+	<div class="center-blocks">
+		<div class="container-fluid maincontainer">
+		<div class="row">
+		<div class="col-md-12 col-lg-12">
+	<div class="row justify-content-center">
+	<div class="col-12 col-xl-8">
+<section role="main" class="news-item">
+	<article role="article">
+        
+	<blockquote>
+		<h2 role="heading" class="news-no-image"><a href="article.html">專題文章</a>：Pay-per-crawl / HTTP 402：Cloudflare 帶起的爬蟲付費機制 </h2>
+		<footer><cite title="作者"><em><strong>作者：</strong><a href="https://www.facebook.com/cadch.com.tw/" target="_blank" rel="noopener noreferrer nofollow">張銘峰</a> 於 2026-07-21</em></cite></footer>
+	</blockquote>
+	<div class="news-main clearfix">
+		<p class="lead">Pay-per-crawl 是 Cloudflare 在 2025 年 7 月推出的機制，讓網站主用 HTTP 402「Payment Required」這個狀態碼向 AI 爬蟲收費：爬蟲不付錢就拿不到內容，付了錢由 Cloudflare 代收、按月結給網站主，最低費率為每次成功抓取 0.01 美元。一年後的 2026 年 7 月，它進一步演化成「Pay Per Use」，收費點從「抓取」移到「內容真的被用進 AI 答案裡」。對任何靠內容吃飯的網站來說，這已經不是遠方的產業新聞，而是後台一個預設值的問題。</p>
+		<h1>Pay-per-crawl / HTTP 402：Cloudflare 帶起的爬蟲付費機制</h1>
+		
+		
+		
+		
+		
+		
+
+				<nav>
+				<h2>本文目錄</h2>
+				<ol>
+					<li><a href="#what-is-402">HTTP 402：一個躺了快三十年的狀態碼</a></li>
+					<li><a href="#why-now">為什麼是現在？三組數字說明一切</a></li>
+					<li><a href="#how-it-works">一次付費爬取，實際發生了什麼事</a></li>
+					<li><a href="#pay-per-use">從 Pay Per Crawl 到 Pay Per Use：2026 年的轉向</a></li>
+					<li><a href="#sept-15">9 月 15 日的預設封鎖，你可能已經被影響</a></li>
+					<li><a href="#protocols">x402、AP2、ACP：402 背後的協定角力</a></li>
+					<li><a href="#checklist">網站主現在該做的六件事</a></li>
+					<li><a href="#risks">三個沒人願意大聲講的罩門</a></li>
+					<li><a href="#faq">常見問題</a></li>
+				</ol>
+				</nav>
+				
+				<section id="what-is-402">
+				<h2>HTTP 402：一個躺了快三十年的狀態碼</h2>
+				
+				<p>寫過後端的人大概都看過 402 這個數字。它從 1997 年的 HTTP 規格就在了，官方註解寫著「保留供未來的微支付機制使用」——然後就一直保留到現在。三十年間，網路上沒有任何一套微支付標準真正跑起來，402 成了規格書裡最有名的閒置欄位。</p>
+				
+				<p>問題出在人。要一個真人為了讀一篇文章去開帳號、填卡號、按確認，成本遠高於文章本身的價值，所以整個網路選了另一條路：內容免費，廣告付錢。</p>
+				
+				<p>AI 代理把這個前提整個掀掉了。機器不會嫌麻煩。它可以在毫秒之內收到 402、解析報價、完成付款、附上憑證重送請求，全程沒有人類介入。當請求方變成程式，微支付第一次變得合理，而躺了快三十年的 402 也就這樣被叫醒。</p>
+				
+				<blockquote class="blockquote">
+					<p>robots.txt 只能說「不要進來」，402 說的是「進來可以，一次多少錢」。</p>
+				</blockquote>
+				</section>
+				
+				<section id="why-now">
+				<h2>為什麼是現在？三組數字說明一切</h2>
+				
+				<p>Cloudflare 會做這件事，不是因為理念，是因為流量結構變了。2026 年 6 月 3 日，Cloudflare 執行長 Matthew Prince 公布 Radar 數據：對 HTML 內容的請求中，自動化流量佔 57.5%，人類佔 42.5%。機器第一次在開放網路上取得多數。而那些被驗證的機器人流量裡，51.8% 是為了模型訓練。</p>
+				
+				<p>第二組數字更難看。AI 爬蟲的請求中，只有 2.6% 最後真的把一個活人送到頁面上。Cloudflare 在 2025 年 8 月公布的比例是：Anthropic 的爬蟲每抓 38,000 頁才回送一次點擊，OpenAI 是 1,091 比 1。到 2026 年 6 月，Anthropic 的數字改善到約 11,122 比 1——改善了，但這個量級本身就說明問題。</p>
+				
+				<p>第三組數字是浪費。Cloudflare 指出，超過一半的 AI 爬蟲流量花在重複抓取根本沒變動的頁面上。你付的頻寬、你的 origin server 的 CPU，有一半是在服務同一份沒改過的 HTML。</p>
+				
+				<p>把三件事擺在一起看：搜尋引擎那套「你給我內容、我還你流量」的交換，在 AI 答案引擎手上已經不成立了。它拿走的是內容，回送的是接近零的點擊。</p>
+				</section>
+				
+				<section id="how-it-works">
+				<h2>一次付費爬取，實際發生了什麼事</h2>
+				
+				<p>整套機制最聰明的地方在於它沒有發明新東西，全部塞在既有的 HTTP 標頭裡。爬蟲不需要註冊帳號、不需要串接 API、不需要跳轉到任何結帳頁。</p>
+				
+				<p>流程有兩條路。第一條是被動的：爬蟲直接請求，Cloudflare 邊緣節點回 402，附上報價，爬蟲看了覺得可以接受，帶著簽章與付款意願重送一次。第二條是主動的，也是實務上比較常見的：爬蟲第一次請求就在標頭裡宣告自己願意付的上限，只要站方的價格低於或等於這個上限，內容就在第一次回應直接送出。</p>
+				
+				<p>一次成功的付費請求，標頭大概長這樣：</p>
+				
+				<pre><code>GET /article/how-llms-actually-work HTTP/1.1
+Host: publisher.com
+signature-agent: &lt;ed25519-public-key-jwk&gt;
+signature-input: sig1=("@method" "@path" "@authority"); keyid="&lt;key-id&gt;"
+signature: sig1=:base64url-encoded-signature:
+crawler-max-price: 0.05
+
+HTTP/1.1 200 OK
+crawler-charged: 0.02
+Content-Type: text/html</code></pre>
+
+				<p>三個關鍵欄位：<code>crawler-max-price</code> 是爬蟲願意出的上限，<code>crawler-exact-price</code> 是精確報價，<code>crawler-charged</code> 是這次實際被扣的金額。身分驗證走 Ed25519 簽章，也就是 Web Bot Auth 那一套——沒有有效簽章的請求連報價都拿不到，這擋掉了偽裝成 GPTBot 的雜魚。</p>
+				
+				<p>錢的部分由 Cloudflare 當 Merchant of Record：它統一向 AI 公司收款、彙總帳務，再按月撥給網站主。網站主不用自己處理跨國收款、稅務、爭議，這是這套機制能推得動的實際原因之一。</p>
+				
+				<div class="alert alert-info">
+					<strong>規模參考：</strong>Cloudflare 公布，目前其網路上每天向 AI 爬蟲發出的 HTTP 402 回應已超過 10 億次。這個數字只計算對 AI 爬蟲的 402，不含其他類型。402 從閒置欄位變成日常，只花了一年。
+				</div>
+				</section>
+				
+				<section id="pay-per-use">
+				<h2>從 Pay Per Crawl 到 Pay Per Use：2026 年的轉向</h2>
+				
+				<p>2026 年 7 月 1 日，Cloudflare 自己承認 Pay Per Crawl 的計價單位有問題。理由很直白：抓取次數跟價值根本不成比例。你的一篇深度分析可能被抓一次，然後被引用進上千個 AI 答案裡；另一篇則可能被反覆抓取三十次，一次都沒被用到。用抓取次數計價，等於用秤重的方式賣鑽石。</p>
+				
+				<p>Pay Per Use 把計價點移到「使用」：當你的內容出現在 AI 答案裡、或當代理為了完成某個任務購買你的付費資訊時，你才收到錢。首批合作夥伴是 AI 搜尋公司 Ceramic.ai 與 You.com，電子報平台 beehiiv 也在早期名單中。Cloudflare 同時規劃了 Attribution Business Insights 儀表板，讓網站主看得到：哪些 bot 抓走了什麼、內容被引用在哪裡、各家 AI 平台實際回送了多少人類流量。</p>
+				
+				<table class="table table-bordered table-hover outer">
+					<caption>Pay Per Crawl 與 Pay Per Use 對照</caption>
+					<thead>
+					<tr>
+						<th>比較項目</th>
+						<th>Pay Per Crawl（2025/7 起）</th>
+						<th>Pay Per Use（2026/7 起）</th>
+					</tr>
+					</thead>
+					<tbody>
+					<tr>
+						<td>計價單位</td>
+						<td>每次成功抓取</td>
+						<td>每次內容被實際使用或引用</td>
+					</tr>
+					<tr>
+						<td>最低費率</td>
+						<td>每次 0.01 美元</td>
+						<td>依合作方模型自訂</td>
+					</tr>
+					<tr>
+						<td>技術載體</td>
+						<td>HTTP 402＋自訂爬蟲標頭</td>
+						<td>402 價格清單＋歸因回報</td>
+					</tr>
+					<tr>
+						<td>對重複抓取</td>
+						<td>照抓照收，站方賺到但頻寬也燒掉</td>
+						<td>誘因轉向少抓多用，省下雙方成本</td>
+					</tr>
+					<tr>
+						<td>主要風險</td>
+						<td>價值與價格脫鉤</td>
+						<td>歸因難以驗證，仰賴 AI 方誠實回報</td>
+					</tr>
+					<tr>
+						<td>適合誰</td>
+						<td>資料量大、更新頻繁的站</td>
+						<td>單篇價值高、常被引用的專業內容</td>
+					</tr>
+					</tbody>
+				</table>
+				
+				<p>另外還有一項叫 Monetization Gateway 的東西，我認為它的長期影響比 Pay Per Use 更大。它讓網站主可以對「幾乎任何資源」收費——一個網頁、一支 API、一份資料集，甚至是 AI 代理的一次工具呼叫。回應內容是機器可讀的 JSON 價格清單：以 USDC 計價、指定接受的鏈（上線時支援 Base 與 Solana）、收款錢包位址、付款逾時時間。客戶端付款上鏈，把結算證明附在下一次請求上，拿到資源。沒有結帳頁，沒有帳號，沒有事前關係。</p>
+				</section>
+				
+				<section id="sept-15">
+				<h2>9 月 15 日的預設封鎖，你可能已經被影響</h2>
+				
+				<p>這是本文最需要你動手的一段。Cloudflare 把 AI 爬蟲依「意圖」分成三類，並且對每一類套用不同的預設政策。從 2026 年 9 月 15 日起，新上 Cloudflare 的網域，在帶有廣告的頁面上，Training 與 Agent 類爬蟲預設封鎖，Search 類維持允許。</p>
+				
+				<table class="table table-bordered table-hover outer">
+					<caption>Cloudflare AI Crawl Control 的爬蟲分類與預設政策</caption>
+					<thead>
+					<tr>
+						<th>類別</th>
+						<th>用途</th>
+						<th>代表爬蟲</th>
+						<th>廣告頁面預設</th>
+					</tr>
+					</thead>
+					<tbody>
+					<tr>
+						<td>Search</td>
+						<td>建立索引、提供搜尋結果與連結</td>
+						<td>Googlebot、OAI-SearchBot</td>
+						<td>允許</td>
+					</tr>
+					<tr>
+						<td>Agent</td>
+						<td>AI 助理即時取用內容以回答問題</td>
+						<td>ChatGPT-User、Claude-User</td>
+						<td>封鎖，除非付費</td>
+					</tr>
+					<tr>
+						<td>Training</td>
+						<td>蒐集資料供模型訓練</td>
+						<td>GPTBot、ClaudeBot、Google-Extended</td>
+						<td>封鎖，除非付費</td>
+					</tr>
+					</tbody>
+				</table>
+				
+				<p>麻煩在於所謂的「mixed-use crawler」——同一支爬蟲同時做搜尋索引、代理取用跟訓練資料蒐集。Bing 和 Applebot 都有這個問題。你封鎖它，可能連搜尋能見度一起賠掉；你放行它，訓練資料就一併奉送。Cloudflare 的分類讓你有機會拆開處理，但拆得乾不乾淨，取決於各家 AI 公司願不願意誠實區分自己的 user agent。</p>
+				
+				<p>順帶一提，Enterprise 方案可以設定三種內容使用層級：Immediate（看過即丟，不得儲存或再利用）、Reference（可索引、可摘錄、須附回連）、Full（可完整摘要與再利用）。這比「全開或全關」細緻得多，也比較接近真正的授權邏輯。</p>
+				
+				<p>做<a href="https://www.cadch.com" target="_blank" rel="noopener noreferrer">網站架設</a>的時候，這件事現在應該跟 SSL 憑證、CDN 快取規則、備份策略放在同一張上線前檢查表上。過去我們幫客戶開站，AI 爬蟲政策是「有空再說」的項目；現在它是一個預設值，你不打開後台看，它就替你做決定了。</p>
+				</section>
+				
+				<section id="protocols">
+				<h2>x402、AP2、ACP：402 背後的協定角力</h2>
+				
+				<p>Cloudflare 的付費爬蟲不是孤立產品，它踩在一整套正在成形的代理支付堆疊上。這裡最值得記住的是 x402：Coinbase 在 2025 年 5 月推出，把 HTTP 402 拿來做穩定幣結算，2026 年 4 月交給 Linux Foundation 成立 x402 Foundation，創始與支持成員包括 Cloudflare、Stripe、Visa、AWS、Google、Microsoft。到 2026 年 4 月，約 6.9 萬個活躍代理在 x402 上完成超過 1.65 億筆交易，金額約 5,000 萬美元。單筆手續費大約 0.001 美元——這是微支付能成立的關鍵前提，在以太坊主網用 5 美元 gas fee 做 0.02 美元的交易，數學上就走不通。</p>
+				
+				<table class="table table-bordered table-hover outer">
+					<caption>代理支付相關協定的分工</caption>
+					<thead>
+					<tr>
+						<th>協定</th>
+						<th>主導方</th>
+						<th>解決的層次</th>
+						<th>與付費爬蟲的關係</th>
+					</tr>
+					</thead>
+					<tbody>
+					<tr>
+						<td>x402</td>
+						<td>Coinbase／Linux Foundation</td>
+						<td>HTTP 原生的結算層，穩定幣</td>
+						<td>直接支撐 Monetization Gateway</td>
+					</tr>
+					<tr>
+						<td>AP2</td>
+						<td>Google</td>
+						<td>授權與意圖證明（Mandates）</td>
+						<td>證明代理有權花這筆錢</td>
+					</tr>
+					<tr>
+						<td>ACP</td>
+						<td>OpenAI＋Stripe</td>
+						<td>電商結帳流程</td>
+						<td>間接相關，偏商品交易</td>
+					</tr>
+					<tr>
+						<td>MPP</td>
+						<td>Stripe／Tempo</td>
+						<td>多軌道（穩定幣、法幣、卡）</td>
+						<td>高頻微支付的另一條路</td>
+					</tr>
+					<tr>
+						<td>Web Bot Auth</td>
+						<td>社群／Cloudflare</td>
+						<td>爬蟲身分驗證</td>
+						<td>402 收費的前置條件</td>
+					</tr>
+					</tbody>
+				</table>
+				
+				<p>這些協定不是互斥的。實務上一個完整流程可能是：Web Bot Auth 驗身分、AP2 證明授權、x402 完成結算，全部包在一次 HTTP 往返裡。標準還在打架，但打的是誰當底層，不是要不要有底層。</p>
+				</section>
+				
+				<section id="checklist">
+				<h2>網站主現在該做的六件事</h2>
+				
+				<p>我不建議一般中小型網站現在就衝去談 Pay Per Use 分潤——你的量體大概率談不到什麼。但下面六件事成本很低，該做。</p>
+				
+				<ol>
+					<li><strong>去 Cloudflare 後台看 AI Crawl Control 的現況。</strong>AI Crawl Control 在 2025 年 8 月正式上線，2026 年 4 月的 Agents Week 之後已對所有方案免費開放，包含免費方案。先看你的站現在被哪些 bot 抓、抓多兇。</li>
+					<li><strong>分開處理三類爬蟲，而不是一刀切。</strong>大多數網站應該放行 Search、限制 Training、對 Agent 視情況決定。全面封鎖 AI 的代價是你在 ChatGPT 和 Gemini 裡直接消失。</li>
+					<li><strong>檢查 robots.txt 有沒有跟 Cloudflare 設定打架。</strong>兩邊規則不一致是很常見的事故，通常是幾年前某任工程師留下的。</li>
+					<li><strong>看 crawl-to-refer 比例，不要只看流量總數。</strong>某家 AI 抓了你十萬頁、送回二十個人，你要不要繼續免費供應，這是商業決定不是技術決定。</li>
+					<li><strong>把內容分層。</strong>行銷型的介紹頁巴不得被 AI 引用，但你的專業資料庫、報價表、獨家研究不該免費奉送。這兩種頁面應該套不同政策。</li>
+					<li><strong>把 AI 爬蟲政策寫進網站上線 SOP。</strong>新站上線第一天就設定好，比事後補救省事太多，尤其在 9 月 15 日之後預設值會替你做決定。</li>
+				</ol>
+				</section>
+				
+				<section id="risks">
+				<h2>三個沒人願意大聲講的罩門</h2>
+				
+				<p><strong class="text-danger">第一，歸因根本無法驗證。</strong>Pay Per Use 的整個邏輯建立在「AI 公司誠實回報你的內容被用了幾次」。你沒辦法稽核別人的推理過程。一篇文章被融進上千個來源之後，它的貢獻度是多少？這個數字最後會是 AI 公司自己算給你的。</p>
+				
+				<p><strong class="text-danger">第二，Cloudflare 成了新的守門人。</strong>它管著全球約兩成的網站流量，這是它能推動這件事的原因，也是風險本身。當一家公司同時決定誰算爬蟲、誰付得起、抽多少、怎麼歸因，我們只是把 Google 的位置換了個人坐。</p>
+				
+				<p><strong class="text-danger">第三，大公司可能繞開。</strong>如果主要 AI 實驗室不接受這套定價，改用住宅代理、第三方資料商、或直接跟大出版社簽獨立授權，那付費爬蟲的槓桿會很快失效，留下來被收費的只有沒有談判能力的小站。這不是理論上的擔憂，音樂產業從 Napster 走到 iTunes 花了將近十年，中間躺了一地屍體。</p>
+				
+				<p>話說回來，就算這套實驗失敗，402 已經不會再睡回去了。當機器變成網路上的多數讀者，「內容是不是免費」這個問題就必須重新回答一次。Cloudflare 的答案不見得對，但它是目前唯一有基礎設施能執行的答案——而在真的有更好的方案出現之前，你至少該知道自己網站的預設值現在設在哪一格。</p>
+				</section>
+				
+				<section id="faq">
+				<h2>常見問題</h2>
+				
+				<h3>Pay-per-crawl 一定要用 Cloudflare 嗎？</h3>
+				<p>目前的完整方案是。Cloudflare 負責身分驗證、代收款、按月結算，這幾件事自建成本極高。不過 x402 是開放標準，理論上其他 CDN 與代理都能實作同一套握手流程，未來未必只有一家。</p>
+				
+				<h3>小網站有機會靠這個賺錢嗎？</h3>
+				<p>坦白說，不太可能。每次 0.01 美元起跳，要有可觀收入需要相當的抓取量。它對小站的真正價值在控制權：決定誰能拿你的東西、拿去做什麼，而不是每個月多幾百塊。</p>
+				
+				<h3>封鎖 AI 爬蟲會影響 Google 搜尋排名嗎？</h3>
+				<p>封鎖 Training 類爬蟲（如 Google-Extended）不影響傳統搜尋索引；封鎖 Googlebot 才會。麻煩的是 mixed-use crawler，這也是為什麼要按類別設定而不是整批封鎖。</p>
+				
+				<h3>如果我不是用 Cloudflare，需要做什麼嗎？</h3>
+				<p>至少維護一份明確的 robots.txt，並在伺服器日誌中確認 AI 爬蟲的實際流量佔比。無法收費，也要先知道自己被拿走了多少。</p>
+				</section>
+
+
+
+		
+		
+		
+		
+		
+		
+		<style>:target {padding-top: 100px!important;margin-top: -100px;}</style>
+	</div>
+
+	<div class="row justify-content-center">
+		<div class="col-md-12 col-lg-8">
+			<img src="images/n04.jpg" alt="Pay-per-crawl / HTTP 402：Cloudflare 帶起的爬蟲付費機制" title="Pay-per-crawl / HTTP 402：Cloudflare 帶起的爬蟲付費機制" class="img-fluid center" decoding="async" loading="lazy" />
+		</div>
+	</div>
+	
+    </article>
+
+</section>
+
+<!-- Modal Image -->
+<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+	<div class="modal-dialog">
+		<div class="modal-content">
+		<div class="modal-header">
+			<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+			<h4 class="modal-title" id="myModalLabel">Pay-per-crawl / HTTP 402：Cloudflare 帶起的爬蟲付費機制</h4>
+		</div>
+		<div class="modal-body">
+		</div>
+		<div class="modal-footer">
+			<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+		</div>
+		</div><!-- .modal-content -->
+	</div><!-- .modal-dialog -->
+</div><!-- .modal -->
+
+<style>
+.news-item blockquote{border-left:5px solid #009E66;padding:10px 20px;}
+.news-main{line-height:2;}
+</style>
+
+<div class="row justify-content-between xoops-news-navigation">
+    <div class="col-6 text-start">
+    </div>
+
+	<div class="col-6 text-end">
+		<a href="ai_seo.html" title="什麼是AI SEO？一篇文章帶你從零搞懂AI時代的搜尋優化">下一篇 <i class="bi bi-caret-right-fill"></i></a>
+	</div>
+    	
+</div><!-- .row -->
+    
+
+    
+
+
+
+
+
+
+
+
+</div>
+</div>
+
+	
+</div>
+</div>
+</div>
+</div>
+
+	
+	<div class="footer-blocks">
+		<div class="container-fluid">
+				<div class="row">
+					<div class="col-md-12 col-lg-12">
+			<div class="xoops-footer-blocks">
+				<div class="row justify-content-center">
+	<div class="col-12 col-xl-8">
+		<ul class="topicnav list-unstyled clearfix">
+			<li><a href="article.html" target="_top" title="專題文章">專題文章</a></li>
+			<li><a href="news.html" target="_top" title="最新訊息">最新訊息</a></li>
+		</ul>
+	</div>
+</div>
+
+<style>
+.topicnav{margin-bottom:20px;}
+.topicnav li{float:left;margin:10px 5px;}
+.topicnav li a{display:inline-block;color:#009E66;background-color:#FFF;border:1px solid #009E66;padding:4px 10px;font-weight:bold;}
+.topicnav li a:hover{color:#FFF;background-color:#009E66;}
+</style>
+		</div>
+	</div>					<div class="col-md-6 col-lg-6">
+	</div>					<div class="col-md-6 col-lg-6">
+	</div>				</div>
+		</div>
+	</div>
+	
+</div>
+
+<!-- footer Start -->
+<footer class="footer">
+	<div class="container-fluid">
+		<div class="row justify-content-center">
+			<div class="col-12 col-xl-8">
+				<div class="row">
+					<div class="col-md-4">
+						<ul class="footer-menu infolist list-unstyled">
+							<li><a href="javascript:;" title="CONTACT">CONTACT</a></li>
+							<li><a href="tel:+886-3-4681000" title="PHONE" rel="noopener noreferrer nofollow">TEL：+886-3-4681000</a></li>
+							<li><a href="mailto:admin@nc.com.tw" title="EMAIL" rel="noopener noreferrer nofollow">EMAIL：admin@nc.com.tw</a></li>
+						</ul>
+					</div>
+					<div class="col-md-4">
+						<ul class="footer-menu infolist list-unstyled">
+							<li><a href="javascript:;" title="COMPANY">COMPANY</a></li>
+							<li><a href="https://goo.gl/maps/FXMG9cAh5RMx3VAFA" title="桃園市平鎮區環南路二段195號" target="_blank" rel="noopener noreferrer nofollow">桃園市平鎮區環南路二段195號</a></li>
+							<li><a href="https://findbiz.nat.gov.tw/fts/company/28499021" title="統一編號：28499021" target="_blank" rel="noopener noreferrer nofollow">統一編號：28499021</a></li>
+						</ul>
+					</div>
+					<div class="col-md-4">
+						<ul class="footer-menu list-unstyled social clearfix">
+							<li><a href="https://www.linkedin.com/in/cadch" target="_top" title="Linkedin" rel="noopener noreferrer nofollow"><i class="bi bi-linkedin"></i></a></li>
+							<li><a href="https://www.facebook.com/cadch.com.tw" target="_top" title="Facebook" rel="noopener noreferrer nofollow"><i class="bi bi-facebook"></i></a></li>
+						</ul>
+						<div class="footer-info">
+							&#169; 2026 CHCCD Digital
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</footer>
+<!-- footer End -->
+
+</body>
+</html>
